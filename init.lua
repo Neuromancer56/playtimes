@@ -16,7 +16,9 @@ local function update_playtime(player, dtime)
     local player_name = player:get_player_name()
     if player_name then
         init_playtime(player_name)
-        playtime_data[player_name].total_playtime = playtime_data[player_name].total_playtime + dtime/1000
+        -- Convert dtime from milliseconds to seconds
+        dtime = dtime / 1000
+        playtime_data[player_name].total_playtime = playtime_data[player_name].total_playtime + dtime
     end
 end
 
@@ -30,18 +32,42 @@ end)
 
 -- Function to handle /playtimes command
 minetest.register_chatcommand("playtimes", {
-    params = "",
-    description = "Displays playtimes for all players",
+    params = "[--top N] [--prefix prefix]",
+    description = "Displays playtimes for players",
     privs = {},
     func = function(name, param)
+        local top_count = tonumber(param:match("%-t%s*(%d+)")) or 0
+        if top_count <= 0 then
+            top_count = nil
+        end
+        
+        local prefix = param:match("%-p%s*(%a+)")
+        
         local output = "Playtimes:\n"
+        
+        -- Sort playtime data by total_playtime
+        local sorted_players = {}
         for player_name, data in pairs(playtime_data) do
-            local total_seconds = math.floor(data.total_playtime)
+            if not prefix or player_name:lower():sub(1, #prefix) == prefix:lower() then
+                table.insert(sorted_players, {name = player_name, playtime = data.total_playtime})
+            end
+        end
+        table.sort(sorted_players, function(a, b) return a.playtime > b.playtime end)
+        
+        -- Display top N players or all players if N is not specified
+        local count = 0
+        for _, player_info in ipairs(sorted_players) do
+            local total_seconds = math.floor(player_info.playtime)
             local hours = math.floor(total_seconds / 3600)
             local minutes = math.floor((total_seconds % 3600) / 60)
             local seconds = total_seconds % 60
-            output = output .. player_name .. ": " .. hours .. " hours, " .. minutes .. " minutes, " .. seconds .. " seconds\n"
+            output = output .. player_info.name .. ": " .. hours .. " hours, " .. minutes .. " minutes, " .. seconds .. " seconds\n"
+            count = count + 1
+            if top_count and count >= top_count then
+                break
+            end
         end
+        
         minetest.chat_send_player(name, output)
     end,
 })
