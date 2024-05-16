@@ -1,13 +1,15 @@
 -- Define a table to store players' playtime
 local playtime_data = {}
 
--- Function to initialize playtime for a player
+-- Function to initialize or update playtime for a player
 local function init_playtime(player_name)
     if not playtime_data[player_name] then
         playtime_data[player_name] = {
             total_playtime = 0,
             last_login = os.time()
         }
+    else
+        playtime_data[player_name].last_login = os.time()
     end
 end
 
@@ -30,6 +32,17 @@ minetest.register_globalstep(function(dtime)
     end
 end)
 
+-- Register callback to initialize playtime data when a player joins
+minetest.register_on_joinplayer(function(player)
+    local player_name = player:get_player_name()
+    init_playtime(player_name)
+end)
+
+-- Function to convert timestamp to date and time string
+local function format_datetime(timestamp)
+    return os.date("%Y-%m-%d %H:%M:%S", timestamp)
+end
+
 -- Function to handle /playtimes command
 minetest.register_chatcommand("playtimes", {
     params = "[--top N] [--prefix prefix]",
@@ -49,7 +62,7 @@ minetest.register_chatcommand("playtimes", {
         local sorted_players = {}
         for player_name, data in pairs(playtime_data) do
             if not prefix or player_name:lower():sub(1, #prefix) == prefix:lower() then
-                table.insert(sorted_players, {name = player_name, playtime = data.total_playtime})
+                table.insert(sorted_players, {name = player_name, playtime = data.total_playtime, last_login = data.last_login})
             end
         end
         table.sort(sorted_players, function(a, b) return a.playtime > b.playtime end)
@@ -61,7 +74,8 @@ minetest.register_chatcommand("playtimes", {
             local hours = math.floor(total_seconds / 3600)
             local minutes = math.floor((total_seconds % 3600) / 60)
             local seconds = total_seconds % 60
-            output = output .. player_info.name .. ": " .. hours .. " hours, " .. minutes .. " minutes, " .. seconds .. " seconds\n"
+            local last_login_str = format_datetime(player_info.last_login)
+            output = output .. player_info.name .. ": " .. hours .. " hours, " .. minutes .. " minutes, " .. seconds .. " seconds; Last login: " .. last_login_str .. "\n"
             count = count + 1
             if top_count and count >= top_count then
                 break
