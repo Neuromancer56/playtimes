@@ -25,10 +25,15 @@ local function update_playtime(player, dtime)
 end
 
 -- Register callback to update playtime every 30 seconds
+local update_interval = 30 -- Update every 30 seconds
+local update_timer = 0
 minetest.register_globalstep(function(dtime)
-    local timer = 30 -- Update every 30 seconds
-    for _, player in ipairs(minetest.get_connected_players()) do
-        update_playtime(player, timer)
+    update_timer = update_timer + dtime
+    if update_timer >= update_interval then
+        update_timer = 0
+        for _, player in ipairs(minetest.get_connected_players()) do
+            update_playtime(player, update_interval * 1000)
+        end
     end
 end)
 
@@ -101,5 +106,20 @@ minetest.register_on_shutdown(function()
     if file then
         file:write(minetest.write_json(playtime_data))
         file:close()
+    end
+end)
+
+-- Save playtime data every 20 minutes
+local save_interval = 1200 -- Save every 1200 seconds (20 minutes)
+local save_timer = 0
+minetest.register_globalstep(function(dtime)
+    save_timer = save_timer + dtime
+    if save_timer >= save_interval then
+        save_timer = 0
+        local file = io.open(playtime_file, "w")
+        if file then
+            file:write(minetest.write_json(playtime_data))
+            file:close()
+        end
     end
 end)
