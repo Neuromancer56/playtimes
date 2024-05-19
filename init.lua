@@ -14,28 +14,27 @@ local function init_playtime(player_name)
 end
 
 -- Function to update playtime for a player
-local function update_playtime(player, dtime)
+local function update_playtime(player, elapsed_time)
     local player_name = player:get_player_name()
     if player_name then
         init_playtime(player_name)
-        -- Convert dtime from milliseconds to seconds
-        dtime = dtime / 1000
-        playtime_data[player_name].total_playtime = playtime_data[player_name].total_playtime + dtime
+        playtime_data[player_name].total_playtime = playtime_data[player_name].total_playtime + elapsed_time
     end
 end
 
--- Register callback to update playtime every 30 seconds
-local update_interval = 30 -- Update every 30 seconds
+-- Register callback to update playtime every update_interval seconds
+local update_interval = 7 -- Update every update_interval seconds
 local update_timer = 0
 minetest.register_globalstep(function(dtime)
     update_timer = update_timer + dtime
     if update_timer >= update_interval then
         update_timer = 0
         for _, player in ipairs(minetest.get_connected_players()) do
-            update_playtime(player, update_interval * 1000)
+            update_playtime(player, update_interval) -- Pass update_interval as the elapsed time in seconds
         end
     end
 end)
+
 
 -- Register callback to initialize playtime data when a player joins
 minetest.register_on_joinplayer(function(player)
